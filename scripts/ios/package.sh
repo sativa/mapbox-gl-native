@@ -98,13 +98,12 @@ if [[ "${BUILD_FOR_DEVICE}" == true ]]; then
         -create -output ${OUTPUT}/dynamic/${NAME}.framework/${NAME} | echo
 else
     step "Copying simulator framework..."
-    mkdir -p ${OUTPUT}/dynamic/${NAME}.framework
     cp -r \
         gyp/build/${BUILDTYPE}-iphonesimulator/${NAME}.framework \
         ${OUTPUT}/dynamic/${NAME}.framework
 fi
 
-echo "Created ${OUTPUT}/dynamic/${NAME}.framework"
+stat ${OUTPUT}/dynamic/${NAME}.framework
 
 step "Copying Resources..."
 cp -pv LICENSE.md "${OUTPUT}/dynamic"
