@@ -20,7 +20,6 @@
       'xcode_settings': {
         'CLANG_ENABLE_OBJC_ARC': 'YES',
         'COMBINE_HIDPI_IMAGES': 'NO', # disable combining @2x, @3x images into .tiff files
-        'COPY_PHASE_STRIP': 'NO',
         'CURRENT_PROJECT_VERSION': '0',
         'DEFINES_MODULE': 'YES',
         'DYLIB_INSTALL_NAME_BASE': '@rpath',
