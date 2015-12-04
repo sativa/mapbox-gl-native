@@ -36,6 +36,7 @@
         'INFOPLIST_FILE': '../ios/app/app-info.plist',
         'TARGETED_DEVICE_FAMILY': '1,2',
         'COMBINE_HIDPI_IMAGES': 'NO', # disable combining @2x, @3x images into .tiff files
+        'COPY_PHASE_STRIP': 'NO',
         'CLANG_ENABLE_OBJC_ARC': 'YES',
         'CLANG_ENABLE_MODULES': 'YES',
         'LD_RUNPATH_SEARCH_PATHS': [

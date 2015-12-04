@@ -64,6 +64,8 @@ if [[ "${BUILD_FOR_DEVICE}" == true ]]; then
         ENABLE_BITCODE=${ENABLE_BITCODE} \
         DEPLOYMENT_POSTPROCESSING=YES \
         CURRENT_PROJECT_VERSION=${PROJ_VERSION} \
+        CODE_SIGNING_REQUIRED=NO \
+        CODE_SIGN_IDENTITY= \
         -project ./build/ios-all/gyp/ios.xcodeproj \
         -configuration ${BUILDTYPE} \
         -target iossdk \
@@ -81,36 +83,27 @@ xcodebuild -sdk iphonesimulator${IOS_SDK_VERSION} \
     -target iossdk \
     -jobs ${JOBS}
 
-#if [[ "${BUILD_FOR_DEVICE}" == true ]]; then
-#    step "Merging device and simulator targets..."
-#    
-#    libtool -dynamic -no_warning_for_no_symbols \
-#        gyp/build/${BUILDTYPE}-iphoneos/${NAME}.framework \
-#        gyp/build/${BUILDTYPE}-iphonesimulator/${NAME}.framework \
-#        -o ${OUTPUT}/dynamic/${NAME}.framework
-#fi
-
-step "Copying framework..."
+# https://medium.com/@syshen/create-an-ios-universal-framework-148eb130a46c
 if [[ "${BUILD_FOR_DEVICE}" == true ]]; then
-    cp -r gyp/build/${BUILDTYPE}-iphoneos/${NAME}.framework ${OUTPUT}/dynamic/${NAME}.framework
+    step "Copying device framework..."
+    cp -r \
+        gyp/build/${BUILDTYPE}-iphoneos/${NAME}.framework \
+        ${OUTPUT}/dynamic/
+    
+    step "Merging simulator framework into device framework..."
+    
+    lipo \
+        gyp/build/${BUILDTYPE}-iphoneos/${NAME}.framework/${NAME} \
+        gyp/build/${BUILDTYPE}-iphonesimulator/${NAME}.framework/${NAME} \
+        -create -output ${OUTPUT}/dynamic/${NAME}.framework/${NAME} | echo
 else
-    cp -r gyp/build/${BUILDTYPE}-iphonesimulator/${NAME}.framework ${OUTPUT}/dynamic/${NAME}.framework
+    step "Copying simulator framework..."
+    mkdir -p ${OUTPUT}/dynamic/${NAME}.framework
+    cp -r \
+        gyp/build/${BUILDTYPE}-iphonesimulator/${NAME}.framework \
+        ${OUTPUT}/dynamic/${NAME}.framework
 fi
-#LIBS=(core.a platform-ios.a asset-fs.a cache-sqlite.a http-nsurl.a)
-#if [[ "${BUILD_FOR_DEVICE}" == true ]]; then
-#    libtool -dynamic -no_warning_for_no_symbols \
-#        `find mason_packages/ios-${IOS_SDK_VERSION} -type f -name libuv.a` \
-#        `find mason_packages/ios-${IOS_SDK_VERSION} -type f -name libgeojsonvt.a` \
-#        -o ${OUTPUT}/static/lib${NAME}.a \
-#        ${LIBS[@]/#/gyp/build/${BUILDTYPE}-iphoneos/libmbgl-} \
-#        ${LIBS[@]/#/gyp/build/${BUILDTYPE}-iphonesimulator/libmbgl-}
-#else
-#    libtool -dynamic -no_warning_for_no_symbols \
-#        `find mason_packages/ios-${IOS_SDK_VERSION} -type f -name libuv.a` \
-#        `find mason_packages/ios-${IOS_SDK_VERSION} -type f -name libgeojsonvt.a` \
-#        -o ${OUTPUT}/static/lib${NAME}.a \
-#        ${LIBS[@]/#/gyp/build/${BUILDTYPE}-iphonesimulator/libmbgl-}
-#fi
+
 echo "Created ${OUTPUT}/dynamic/${NAME}.framework"
 
 step "Copying Resources..."
