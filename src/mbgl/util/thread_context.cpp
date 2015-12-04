@@ -9,7 +9,7 @@ namespace {
 using namespace mbgl::util;
 static ThreadLocal<ThreadContext>& current = *new ThreadLocal<ThreadContext>;
 
-}
+} // namespace
 
 namespace mbgl {
 namespace util {
@@ -56,7 +56,7 @@ void ThreadContext::setFileSource(FileSource* fileSource) {
     if (current.get() != nullptr) {
         current.get()->fileSource = fileSource;
     } else {
-        throw new std::runtime_error("Current thread has no current ThreadContext.");
+        throw std::runtime_error("Current thread has no current ThreadContext.");
     }
 }
 
@@ -72,7 +72,7 @@ void ThreadContext::setGLObjectStore(GLObjectStore* glObjectStore) {
     if (current.get() != nullptr) {
         current.get()->glObjectStore = glObjectStore;
     } else {
-        throw new std::runtime_error("Current thread has no current ThreadContext.");
+        throw std::runtime_error("Current thread has no current ThreadContext.");
     }
 }
 
@@ -95,5 +95,5 @@ private:
 // ThreadContext::current object.
 MainThreadContextRegistrar registrar;
 
-}
-}
+} // namespace util
+} // namespace mbgl

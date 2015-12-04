@@ -14,7 +14,7 @@ enum ImageAlphaMode {
 template <ImageAlphaMode Mode>
 class Image {
 public:
-    Image() {}
+    Image() = default;
 
     Image(size_t w, size_t h)
         : width(w),
@@ -36,6 +36,6 @@ using PremultipliedImage = Image<ImageAlphaMode::Premultiplied>;
 PremultipliedImage decodeImage(const std::string&);
 std::string encodePNG(const PremultipliedImage&);
 
-}
+} // namespace mbgl
 
 #endif

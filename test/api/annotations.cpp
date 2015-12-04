@@ -24,7 +24,7 @@ std::string getFileSourceRoot() {
 #endif
 }
 
-}
+} // namespace
 
 std::shared_ptr<SpriteImage> defaultMarker() {
     PremultipliedImage image = decodeImage(util::read_file("test/fixtures/sprites/default_marker.png"));
@@ -36,7 +36,7 @@ PremultipliedImage render(Map& map) {
     map.renderStill([&](std::exception_ptr, PremultipliedImage&& image) {
         promise.set_value(std::move(image));
     });
-    return std::move(promise.get_future().get());
+    return promise.get_future().get();
 }
 
 void checkRendering(Map& map, const char * name) {

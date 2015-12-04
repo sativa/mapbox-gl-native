@@ -3,12 +3,12 @@ ifeq (,$(V))
 endif
 
 # Determine host platform
-HOST ?= $(BUILD)
+export HOST ?= $(BUILD)
 
 # Defines host defaults
 include scripts/$(HOST)/defaults.mk
 
-HOST_VERSION ?= $(BUILD_VERSION)
+export HOST_VERSION ?= $(BUILD_VERSION)
 
 # Optionally include version-specific host defaults
 -include scripts/$(HOST)/$(HOST_VERSION)/defaults.mk
@@ -20,7 +20,7 @@ ifneq (,$(wildcard scripts/$(HOST)/$(HOST_VERSION)/configure.sh))
 	CONFIGURE_FILES += scripts/$(HOST)/$(HOST_VERSION)/configure.sh
 endif
 
-HOST_SLUG = $(HOST)-$(HOST_VERSION)
+export HOST_SLUG = $(HOST)-$(HOST_VERSION)
 CONFIGURE_FILES = scripts/$(HOST)/configure.sh
 ifneq (,$(wildcard scripts/$(HOST)/$(HOST_VERSION)/configure.sh))
 	CONFIGURE_FILES += scripts/$(HOST)/$(HOST_VERSION)/configure.sh
@@ -65,6 +65,8 @@ config/%.gypi: $(SUBMODULES) configure $(CONFIGURE_FILES)
 	@printf "$(TEXT_BOLD)$(COLOR_GREEN)* Recreating project...$(FORMAT_END)\n"
 	$(QUIET)$(ENV) ./scripts/flock.py build/Configure.lock ./configure config/$*.gypi
 
+.PHONY: config
+config: config/$(HOST_SLUG).gypi
 
 #### Build files ###############################################################
 
@@ -93,6 +95,12 @@ Xcode/__project__: print-env $(SUBMODULES) config/$(HOST_SLUG).gypi
 	@printf "$(TEXT_BOLD)$(COLOR_GREEN)* Recreating project...$(FORMAT_END)\n"
 	$(QUIET)$(ENV) deps/run_gyp gyp/$(HOST).gyp $(GYP_FLAGS) \
 		-f xcode$(GYP_FLAVOR_SUFFIX)
+
+.PHONY: Ninja/__project__
+Ninja/__project__: print-env $(SUBMODULES) config/$(HOST_SLUG).gypi
+	@printf "$(TEXT_BOLD)$(COLOR_GREEN)* Recreating project...$(FORMAT_END)\n"
+	$(QUIET)$(ENV) deps/run_gyp gyp/$(HOST).gyp -Gconfig=$(BUILDTYPE) $(GYP_FLAGS) \
+		-f ninja
 
 #### Build individual targets ##################################################
 
@@ -135,6 +143,25 @@ Xcode/%: Xcode/__project__
 		-target $* \
 		-jobs $(JOBS) \
 		$(XCPRETTY)
+
+Ninja/%: Ninja/__project__
+	@printf "$(TEXT_BOLD)$(COLOR_GREEN)* Building target $*...$(FORMAT_END)\n"
+	$(QUIET)$(ENV) deps/ninja/ninja-$(HOST) -C build/$(HOST_SLUG)/$(BUILDTYPE) $*
+
+
+Ninja/compdb: OUTPUT=build/$(HOST_SLUG)/$(BUILDTYPE)/compile_commands.json
+Ninja/compdb: Ninja/__project__
+	@printf "$(TEXT_BOLD)$(COLOR_GREEN)* Writing to $(OUTPUT)$(FORMAT_END)\n"
+	$(QUIET)$(ENV) deps/ninja/ninja-$(HOST) -C build/$(HOST_SLUG)/$(BUILDTYPE) \
+		-t compdb cc cc_s cxx objc objcxx > $(OUTPUT)
+
+#### Tidy ######################################################################
+
+tidy: Ninja/compdb
+	@printf "$(TEXT_BOLD)$(COLOR_GREEN)* Generating header files...$(FORMAT_END)\n"
+	$(QUIET)$(ENV) deps/ninja/ninja-$(HOST) -C build/$(HOST_SLUG)/$(BUILDTYPE) version shaders
+	@printf "$(TEXT_BOLD)$(COLOR_GREEN)* Running tidy...$(FORMAT_END)\n"
+	@./scripts/clang-tidy.sh
 
 #### Run tests #################################################################
 

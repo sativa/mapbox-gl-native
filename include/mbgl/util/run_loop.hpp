@@ -114,7 +114,7 @@ private:
     class Invoker : public WorkTask {
     public:
         Invoker(F&& f, P&& p, std::shared_ptr<std::atomic<bool>> canceled_ = nullptr)
-          : canceled(canceled_),
+          : canceled(std::move(canceled_)),
             func(std::move(f)),
             params(std::move(p)) {
         }
@@ -179,7 +179,7 @@ private:
     std::unique_ptr<Impl> impl;
 };
 
-}
-}
+} // namespace util
+} // namespace mbgl
 
 #endif
