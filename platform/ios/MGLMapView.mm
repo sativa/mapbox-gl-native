@@ -3052,7 +3052,7 @@ CLLocationCoordinate2D MGLLocationCoordinate2DFromLatLng(mbgl::LatLng latLng)
 
 + (UIImage *)resourceImageNamed:(NSString *)imageName
 {
-    NSString *extension = imageName.pathExtension ? imageName.pathExtension : @"png";
+    NSString *extension = imageName.pathExtension.length ? imageName.pathExtension : @"png";
     NSString *path = [[NSBundle mgl_frameworkBundle] pathForResource:imageName.stringByDeletingPathExtension
                                                               ofType:extension];
     if ( ! path)
