@@ -3053,8 +3053,16 @@ CLLocationCoordinate2D MGLLocationCoordinate2DFromLatLng(mbgl::LatLng latLng)
 + (UIImage *)resourceImageNamed:(NSString *)imageName
 {
     NSString *extension = imageName.pathExtension.length ? imageName.pathExtension : @"png";
-    NSString *path = [[NSBundle mgl_frameworkBundle] pathForResource:imageName.stringByDeletingPathExtension
-                                                              ofType:extension];
+    NSBundle *bundle = [NSBundle mgl_frameworkBundle];
+    NSString *directory = nil;
+    if (![bundle.infoDictionary[@"CFBundlePackageType"] isEqualToString:@"FMWK"]) {
+        // For static libraries, the bundle is the containing application bundle
+        // and the resources are in a bundle alongside the static library.
+        directory = @"Mapbox.bundle";
+    }
+    NSString *path = [bundle pathForResource:imageName.stringByDeletingPathExtension
+                                      ofType:extension
+                                 inDirectory:directory];
     if ( ! path)
     {
         [NSException raise:@"Resource not found" format:

@@ -35,11 +35,12 @@ trap finish EXIT
 
 
 rm -rf ${OUTPUT}
+mkdir -p "${OUTPUT}"/static
 mkdir -p "${OUTPUT}"/dynamic
 
 
-step "Recording library version..."
-VERSION="${OUTPUT}"/dynamic/version.txt
+step "Recording library version…"
+VERSION="${OUTPUT}"/version.txt
 echo -n "https://github.com/mapbox/mapbox-gl-native/commit/" > ${VERSION}
 HASH=`git log | head -1 | awk '{ print $2 }' | cut -c 1-10` && true
 echo -n "mapbox-gl-native "
@@ -47,7 +48,7 @@ echo ${HASH}
 echo ${HASH} >> ${VERSION}
 
 
-step "Creating build files..."
+step "Creating build files…"
 export MASON_PLATFORM=ios
 export BUILDTYPE=${BUILDTYPE:-Release}
 export HOST=ios
@@ -56,7 +57,19 @@ make Xcode/ios
 PROJ_VERSION=${TRAVIS_JOB_NUMBER:-${BITRISE_BUILD_NUMBER:-0}}
 
 if [[ "${BUILD_FOR_DEVICE}" == true ]]; then
-    step "Building iOS device targets (build ${PROJ_VERSION})..."
+    step "Building intermediate static libraries for iOS devices (build ${PROJ_VERSION})…"
+    xcodebuild -sdk iphoneos${IOS_SDK_VERSION} \
+        ARCHS="arm64 armv7 armv7s" \
+        ONLY_ACTIVE_ARCH=NO \
+        GCC_GENERATE_DEBUGGING_SYMBOLS=${GCC_GENERATE_DEBUGGING_SYMBOLS} \
+        ENABLE_BITCODE=${ENABLE_BITCODE} \
+        DEPLOYMENT_POSTPROCESSING=YES \
+        -project ./build/ios-all/gyp/mbgl.xcodeproj \
+        -configuration ${BUILDTYPE} \
+        -target everything \
+        -jobs ${JOBS}
+    
+    step "Building framework for iOS devices (build ${PROJ_VERSION})…"
     xcodebuild -sdk iphoneos${IOS_SDK_VERSION} \
         ARCHS="arm64 armv7 armv7s" \
         ONLY_ACTIVE_ARCH=NO \
@@ -72,8 +85,19 @@ if [[ "${BUILD_FOR_DEVICE}" == true ]]; then
         -jobs ${JOBS}
 fi
 
-step "Building iOS Simulator targets (build ${PROJ_VERSION})..."
+step "Building intermediate static libraries for iOS Simulator (build ${PROJ_VERSION})…"
 xcodebuild -sdk iphonesimulator${IOS_SDK_VERSION} \
+    ARCHS="x86_64 i386" \
+    ONLY_ACTIVE_ARCH=NO \
+    GCC_GENERATE_DEBUGGING_SYMBOLS=${GCC_GENERATE_DEBUGGING_SYMBOLS} \
+    -project ./build/ios-all/gyp/mbgl.xcodeproj \
+    -configuration ${BUILDTYPE} \
+    -target everything \
+    -jobs ${JOBS}
+
+step "Building framework for iOS Simulator (build ${PROJ_VERSION})…"
+xcodebuild -sdk iphonesimulator${IOS_SDK_VERSION} \
+    ARCHS="x86_64 i386" \
     ONLY_ACTIVE_ARCH=NO \
     GCC_GENERATE_DEBUGGING_SYMBOLS=${GCC_GENERATE_DEBUGGING_SYMBOLS} \
     ENABLE_BITCODE=${ENABLE_BITCODE} \
@@ -83,37 +107,57 @@ xcodebuild -sdk iphonesimulator${IOS_SDK_VERSION} \
     -target iossdk \
     -jobs ${JOBS}
 
+LIBS=(core.a platform-ios.a asset-fs.a cache-sqlite.a http-nsurl.a)
+
 # https://medium.com/@syshen/create-an-ios-universal-framework-148eb130a46c
 if [[ "${BUILD_FOR_DEVICE}" == true ]]; then
-    step "Copying device framework..."
+    step "Assembling static library for iOS devices…"
+    libtool -static -no_warning_for_no_symbols \
+        `find mason_packages/ios-${IOS_SDK_VERSION} -type f -name libuv.a` \
+        `find mason_packages/ios-${IOS_SDK_VERSION} -type f -name libgeojsonvt.a` \
+        -o ${OUTPUT}/static/lib${NAME}.a \
+        ${LIBS[@]/#/gyp/build/${BUILDTYPE}-iphoneos/libmbgl-} \
+        ${LIBS[@]/#/gyp/build/${BUILDTYPE}-iphonesimulator/libmbgl-}
+    
+    step "Copying iOS Simulator framework into place…"
     cp -r \
         gyp/build/${BUILDTYPE}-iphoneos/${NAME}.framework \
         ${OUTPUT}/dynamic/
     
-    step "Merging simulator framework into device framework..."
-    
+    step "Merging simulator framework into device framework…"
     lipo \
         gyp/build/${BUILDTYPE}-iphoneos/${NAME}.framework/${NAME} \
         gyp/build/${BUILDTYPE}-iphonesimulator/${NAME}.framework/${NAME} \
         -create -output ${OUTPUT}/dynamic/${NAME}.framework/${NAME} | echo
 else
-    step "Copying simulator framework..."
+    step "Assembling static library for iOS Simulator…"
+    libtool -static -no_warning_for_no_symbols \
+        `find mason_packages/ios-${IOS_SDK_VERSION} -type f -name libuv.a` \
+        `find mason_packages/ios-${IOS_SDK_VERSION} -type f -name libgeojsonvt.a` \
+        -o ${OUTPUT}/static/lib${NAME}.a \
+        ${LIBS[@]/#/gyp/build/${BUILDTYPE}-iphonesimulator/libmbgl-}
+    
+    step "Copying iOS Simulator framework into place…"
     cp -r \
         gyp/build/${BUILDTYPE}-iphonesimulator/${NAME}.framework \
         ${OUTPUT}/dynamic/${NAME}.framework
 fi
 
+stat ${OUTPUT}/static/lib${NAME}.a
 stat ${OUTPUT}/dynamic/${NAME}.framework
 
-step "Copying Resources..."
-cp -pv LICENSE.md "${OUTPUT}/dynamic"
+step "Copying library resources…"
+cp -pv LICENSE.md "${OUTPUT}"
+cp -rv ios/app/Settings.bundle "${OUTPUT}"
+mkdir -p "${OUTPUT}/static/${NAME}.bundle"
+cp -pv platform/ios/resources/* "${OUTPUT}/static/${NAME}.bundle"
 
-step "Creating API Docs..."
+step "Generating API documentation…"
 if [ -z `which appledoc` ]; then
     echo "Unable to find appledoc. See https://github.com/mapbox/mapbox-gl-native/blob/master/docs/BUILD_IOS_OSX.md"
     exit 1
 fi
-DOCS_OUTPUT="${OUTPUT}/dynamic/Docs"
+DOCS_OUTPUT="${OUTPUT}/documentation"
 DOCS_VERSION=$( git tag | grep ^ios | sed 's/^ios-//' | sort -r | grep -v '\-rc.' | grep -v '\-pre.' | sed -n '1p' | sed 's/^v//' )
 rm -rf /tmp/mbgl
 mkdir -p /tmp/mbgl/
@@ -138,4 +182,4 @@ appledoc \
     --company-id com.mapbox \
     --index-desc ${README} \
     /tmp/mbgl/Headers
-cp ${README} "${OUTPUT}/dynamic"
+cp ${README} "${OUTPUT}"
