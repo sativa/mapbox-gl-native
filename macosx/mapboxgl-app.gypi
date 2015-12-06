@@ -108,6 +108,19 @@
         'SUPPORTED_PLATFORMS':'macosx',
       },
       
+      'configurations': {
+        'Debug': {
+          'xcode_settings': {
+            'COPY_PHASE_STRIP': 'NO',
+          },
+        },
+        'Release': {
+          'xcode_settings': {
+            'COPY_PHASE_STRIP': 'YES',
+          },
+        },
+      },
+      
       'copies': [
         {
           'destination': '<(PRODUCT_DIR)/$(FRAMEWORKS_FOLDER_PATH)',
