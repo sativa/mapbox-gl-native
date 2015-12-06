@@ -3,6 +3,7 @@
 #import "../../platform/darwin/NSString+MGLAdditions.h"
 #import "../../platform/osx/NSBundle+MGLAdditions.h"
 #import "../../platform/osx/NSProcessInfo+MGLAdditions.h"
+#import "../../platform/osx/MGLMapView_Private.h"
 
 __attribute__((constructor))
 static void InitializeMapbox() {
@@ -14,6 +15,7 @@ static void InitializeMapbox() {
     mgl_linkBundleCategory();
     mgl_linkStringCategory();
     mgl_linkProcessInfoCategory();
+    mgl_linkMapViewIBCategory();
     
     [MGLAccountManager class];
     [MGLAnnotationImage class];
