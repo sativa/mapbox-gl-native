@@ -33,6 +33,7 @@
         '../platform/darwin/MGLPointAnnotation.m',
         '../platform/darwin/MGLPolyline.mm',
         '../platform/darwin/MGLPolygon.mm',
+        '../platform/darwin/MGLMapCamera.mm',
         '../platform/osx/MGLAccountManager_Private.h',
         '../platform/osx/MGLAccountManager.m',
         '../platform/osx/MGLMapView_Private.h',
