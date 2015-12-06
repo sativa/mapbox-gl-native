@@ -4,13 +4,10 @@ This section is for people contributing to Mapbox GL directly in the context of 
 
 ### Build
 
-1. Install [appledoc](http://appledoc.gentlebytes.com/appledoc/) for API docs generation.
+1. Install [jazzy](https://github.com/realm/jazzy) for generating API documentation:
 
    ```
-   curl -L -o appledoc.zip https://github.com/tomaz/appledoc/releases/download/v2.2-963/appledoc.zip
-   unzip appledoc.zip
-   cp appledoc /usr/local/bin
-   cp -Rf Templates/ ~/.appledoc
+   [sudo] gem install jazzy
    ```
 
 1. Run `make ipackage`. The packaging script will produce the statically-linked `libMapbox.a`, `Mapbox.bundle` for resources, a `Headers` folder, and a `Docs` folder with HTML API documentation.

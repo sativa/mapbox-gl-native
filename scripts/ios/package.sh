@@ -116,9 +116,13 @@ mkdir -p "${OUTPUT}/static/${NAME}.bundle"
 cp -pv platform/ios/resources/* "${OUTPUT}/static/${NAME}.bundle"
 
 step "Creating API Docs..."
-if [ -z `which appledoc` ]; then
-    echo "Unable to find appledoc. See https://github.com/mapbox/mapbox-gl-native/blob/master/docs/BUILD_IOS_OSX.md"
-    exit 1
+if [ -z `which jazzy` ]; then
+    step "Installing jazzy..."
+    gem install jazzy
+    if [ -z `which jazzy` ]; then
+        echo "Unable to install jazzy. See https://github.com/mapbox/mapbox-gl-native/blob/master/docs/BUILD_IOS_OSX.md"
+        exit 1
+    fi
 fi
 DOCS_OUTPUT="${OUTPUT}/static/Docs"
 DOCS_VERSION=$( git tag | grep ^ios | sed 's/^ios-//' | sort -r | grep -v '\-rc.' | grep -v '\-pre.' | sed -n '1p' | sed 's/^v//' )
@@ -129,20 +133,23 @@ cat ios/docs/pod-README.md > ${README}
 echo >> ${README}
 echo -n "#" >> ${README}
 cat CHANGELOG.md | sed -n "/^## iOS ${DOCS_VERSION}/,/^##/p" | sed '$d' >> ${README}
-# Copy headers to a temporary location where we can substitute macros that appledoc doesn't understand.
-cp -r "${OUTPUT}/static/Headers" /tmp/mbgl
-perl \
-    -pi \
-    -e 's/NS_(?:(MUTABLE)_)?(ARRAY|SET|DICTIONARY)_OF\(\s*(.+?)\s*\)/NS\L\u$1\u$2\E <$3>/g' \
-    /tmp/mbgl/Headers/*.h
-appledoc \
-    --output ${DOCS_OUTPUT} \
-    --project-name "Mapbox iOS SDK ${DOCS_VERSION}" \
-    --project-company Mapbox \
-    --create-html \
-    --no-create-docset \
-    --no-install-docset \
-    --company-id com.mapbox \
-    --index-desc ${README} \
-    /tmp/mbgl/Headers
-cp ${README} "${OUTPUT}/static"
+
+# --xcodebuild-arguments will be unnecessary after jazzy releases a version with
+# <https://github.com/realm/jazzy/pull/394>. jazzy ignores many of the arguments
+# below in the presence of --xcodebuild-arguments, so we have to duplicate those
+# arguments in --xcodebuild-arguments.
+jazzy \
+    --xcodebuild-arguments "--objc,include/mbgl/ios/Mapbox.h,-x,objective-c,-isysroot,$(xcrun --show-sdk-path --sdk iphoneos)" \
+    --objc \
+    --skip-undocumented \
+    --author Mapbox \
+    --author_url https://www.mapbox.com/ \
+    --github_url https://github.com/mapbox/mapbox-gl-native \
+    --github-file-prefix https://github.com/mapbox/mapbox-gl-native/tree/${HASH} \
+    --module-version ${DOCS_VERSION} \
+    --umbrella-header include/mbgl/ios/Mapbox.h \
+    --framework-root . \
+    --module Mapbox \
+    --readme ${README} \
+    --root-url https://www.mapbox.com/ios-sdk/api/${DOCS_VERSION}/ \
+    --output ${DOCS_OUTPUT}
